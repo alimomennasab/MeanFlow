@@ -1,9 +1,22 @@
 import os
-
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
+def sample_t_r(batch_size, percent_unequal=0.25):
+    # percent_unequal: fraction of batch where r != t
+    t = torch.rand(batch_size)
+    r = torch.rand(batch_size) * t  # r in [0, t], so r <= t
+
+    num_unequal = int(percent_unequal * batch_size)
+
+    unequal_mask = torch.zeros(batch_size, dtype=torch.bool)
+    unequal_indices = torch.randperm(batch_size)[:num_unequal] # randomly choose percent_unequal% of (r, t) to be unequal
+    unequal_mask[unequal_indices] = True
+
+    r = torch.where(unequal_mask, r, t)
+
+    return t, r
 
 class MeanFlowDataset(Dataset):
     """Load preprocessed 64x64x3 images from ``train_npy/{class}_npy/*.npy``."""
@@ -38,5 +51,12 @@ if __name__ == "__main__":
     image, label = train_dataset[0]
     print(f"sample shape: {image.shape}, label: {label}")
 
-    train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+    # subset of 3 samples
+    #train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
+    subset = torch.utils.data.Subset(train_dataset, [0, 1, 2])
+    small_train_loader = DataLoader(subset, batch_size=3, shuffle=False)
 
+    # training loop
+    t, r = sample_t_r(batch_size=8)
+    print(t)
+    print(r)

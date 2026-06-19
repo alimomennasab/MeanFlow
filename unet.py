@@ -5,7 +5,22 @@ import math
 import torch
 import torch.nn as nn
 
-# timestep embedding helpers
+# timestep sampling and embedding helpers
+def sample_t_r(batch_size, percent_unequal=0.25):
+    # percent_unequal: fraction of batch where r != t
+    t = torch.rand(batch_size)
+    r = torch.rand(batch_size) * t  # r in [0, t], so r <= t
+
+    num_unequal = max(int(percent_unequal * batch_size), 1)
+
+    unequal_mask = torch.zeros(batch_size, dtype=torch.bool)
+    unequal_indices = torch.randperm(batch_size)[:num_unequal] # randomly choose percent_unequal% of (r, t) to be unequal
+    unequal_mask[unequal_indices] = True
+
+    r = torch.where(unequal_mask, r, t)
+
+    return t, r
+
 def timestep_emb(timesteps, d_emb):
     half_dim = d_emb // 2
     freqs = torch.exp(
@@ -38,7 +53,7 @@ def create_timestep_embs(r, t, d_emb):
 
     return t_embs, tr_embs 
 
-
+# model 
 class ResBlock(nn.Module):
     def __init__(self, in_ch, out_ch, d_emb=256):
         super().__init__()

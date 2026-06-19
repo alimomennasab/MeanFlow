@@ -1,0 +1,4 @@
+data/imagenette2
+.DS_Store
+/.venv
+.python-version

@@ -58,10 +58,10 @@ class ResBlock(nn.Module):
     def __init__(self, in_ch, out_ch, d_emb=256):
         super().__init__()
         self.proj_embs = nn.Linear(d_emb, out_ch)
-        self.norm1 = nn.BatchNorm2d(in_ch)
+        self.norm1 = nn.GroupNorm(8, in_ch)
         self.act1 = nn.LeakyReLU()
         self.conv1 = nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1)
-        self.norm2 = nn.BatchNorm2d(out_ch)
+        self.norm2 = nn.GroupNorm(8, out_ch)
         self.act2 = nn.LeakyReLU()
         self.conv2 = nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1)
         self.skip = nn.Identity() if in_ch == out_ch else nn.Conv2d(in_ch, out_ch, kernel_size=1)
@@ -164,3 +164,6 @@ class UNet(nn.Module):
 
         return x
 
+    def u_fn(self, z, r, t):
+        # used by torch.func.jvp during training
+        return self.forward(z, r, t)

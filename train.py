@@ -1,7 +1,8 @@
 import os
 import time
-import numpy as np
 import torch
+import torch.nn as nn
+import numpy as np
 from torch.utils.data import DataLoader, Dataset
 from unet import UNet, sample_t_r
 from utils import plot_loss, create_experiment_dir
@@ -34,19 +35,19 @@ class MeanFlowDataset(Dataset):
 if __name__ == "__main__":
     # hyperparams & config
     run = 0
-    epochs = 20
+    epochs = 100
+    lr = 1e-3
     batch_size = 3
     loss_fn = nn.MSELoss()
-    optimizer = 
 
     # dataset, dataloader, save path
     save_path = create_experiment_dir(run)
     train_dataset_path = "data/imagenette2/train_npy/"
     val_dataset_path = "data/imagenette2/val_npy/"
     train_dataset = MeanFlowDataset(train_dataset_path)
-    val_data = MeanFlowDataset(val_dataset_path)
+    val_dataset = MeanFlowDataset(val_dataset_path)
     print(f"num train samples: {len(train_dataset)}")
-    print(f"num val samples: " {len(val_dataset)})
+    print(f"num val samples: {len(val_dataset)}")
 
     image, label = train_dataset[0]
     print(f"sample shape: {image.shape}, label: {label}")
@@ -61,32 +62,36 @@ if __name__ == "__main__":
 
     # initialize model & optimizer
     model = UNet(in_ch=3, ch=(64, 128, 256, 512), d_emb=256)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
 
 
     # training loop
-    train_start_time = time.Time()
+    train_start_time = time.time()
     train_losses, val_losses = [], []
 
     for i in range(epochs):
         model.train()
-        epoch_start_time = time.Time()
+        epoch_start_time = time.time()
         epoch_train_loss = 0
 
-        for images, labels in small_train_loader: 
+        for x, y in small_train_loader: 
             optimizer.zero_grad()
-            t, r = sample_t_r(batch_size=8)
-            print("t: ", t)
-            print("r: ", r)
+            t, r = sample_t_r(batch_size)
+
+            # reshape t and r for image operations
+            t_reshape = t.view(-1, 1, 1, 1)  # (B, 1, 1, 1) 
+            r_reshape = r.view(-1, 1, 1, 1)  # (B, 1, 1, 1) 
 
             e = torch.randn_like(x)
-            z = (1 - t) * x + t * e
+            z = (1 - t_reshape) * x + t_reshape * e
             v = e - x
-            fn = model(images, r, t)
-            u, dudt = torch.func.jvp(fn, (z, r, t), (v, 0, 1))
-            u_tgt = v - (t - r) * dudt
-            train_loss = loss_fn(u, u_tgt.detatch()) #  error = u - stopgrad(u_tgt)
-            train_loss.backwards()
+
+            u, dudt = torch.func.jvp(
+                model.u_fn, (z, r, t), (v, torch.zeros_like(r), torch.ones_like(t))
+            )
+            u_tgt = v - (t_reshape - r_reshape) * dudt
+            train_loss = loss_fn(u, u_tgt.detach())
+            train_loss.backward()
             optimizer.step()
             epoch_train_loss += train_loss.item()
 
@@ -94,24 +99,27 @@ if __name__ == "__main__":
 
         model.eval()
         epoch_val_loss = 0
-        for images, labels in small_val_loader:
-            t, r = sample_t_r(batch_size=8)
-            print("t: ", t)
-            print("r: ", r)
+        for x, y in small_val_loader:
+            t, r = sample_t_r(batch_size)
+            t_reshape = t.view(-1, 1, 1, 1)
+            r_reshape = r.view(-1, 1, 1, 1)
 
             e = torch.randn_like(x)
-            z = (1 - t) * x + t * e
+            z = (1 - t_reshape) * x + t_reshape * e
             v = e - x
-            fn = model(images, r, t)
-            u, dudt = torch.func.jvp(fn, (z, r, t), (v, 0, 1))
-            u_tgt = v - (t - r) * dudt
-            val_loss = loss_fn(u, u_tgt.detatch()) #  error = u - stopgrad(u_tgt)
+
+            with torch.no_grad():
+                u, dudt = torch.func.jvp(
+                    model.u_fn, (z, r, t), (v, torch.zeros_like(r), torch.ones_like(t))
+                )
+            u_tgt = v - (t_reshape - r_reshape) * dudt
+            val_loss = loss_fn(u, u_tgt.detach())
             epoch_val_loss += val_loss.item()
         
         val_losses.append(epoch_val_loss / len(small_val_loader))
 
-        plot_loss(train_loss, val_loss, save_path)
-        print(f"Epoch {i+1}: {time.Time() - epoch_start_time}. Train loss: {train_losses[-1]}, Val loss: {val_losses[-1]}") 
+        plot_loss(train_losses, val_losses, save_path)
+        print(f"Epoch {i+1}: {time.time() - epoch_start_time}. Train loss: {train_losses[-1]}, Val loss: {val_losses[-1]}") 
 
     torch.save(model.state_dict(), os.path.join(save_path, "meanflow.pt"))
-    print("Total training time: ", time.Time() - train_start_time)
+    print("Total training time: ", time.time() - train_start_time)

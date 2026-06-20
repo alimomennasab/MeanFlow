@@ -1,5 +1,6 @@
 import os
 import time
+import random
 import torch
 import torch.nn as nn
 import numpy as np
@@ -32,19 +33,33 @@ class MeanFlowDataset(Dataset):
         return image, label
 
 
+def set_seed(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 if __name__ == "__main__":
     # hyperparams & config
-    run = 0
-    epochs = 100
+    run = 5
+    seed = 42
+    epochs = 5000
     lr = 1e-3
     batch_size = 3
     loss_fn = nn.MSELoss()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    set_seed(seed)
 
     # dataset, dataloader, save path
     save_path = create_experiment_dir(run)
     train_dataset_path = "data/imagenette2/train_npy/"
     val_dataset_path = "data/imagenette2/val_npy/"
     train_dataset = MeanFlowDataset(train_dataset_path)
+    val_dataset = MeanFlowDataset(val_dataset_path)
     val_dataset = MeanFlowDataset(val_dataset_path)
     print(f"num train samples: {len(train_dataset)}")
     print(f"num val samples: {len(val_dataset)}")
@@ -53,30 +68,33 @@ if __name__ == "__main__":
     print(f"sample shape: {image.shape}, label: {label}")
 
     # subset of 3 samples
-    #train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
-    #val_loader = DataLoader(val_dataset, batch_size=8, shuffle=True)
     train_subset = torch.utils.data.Subset(train_dataset, [0, 1, 2])
-    val_subset = torch.utils.data.Subset(val_dataset, [0, 1, 2])
     small_train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
     small_val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False)
 
-    # initialize model & optimizer
+    # initialize model, optimizer, and scheduler
     model = UNet(in_ch=3, ch=(64, 128, 256, 512), d_emb=256)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-2)
-
+    model = model.to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
     # training loop
     train_start_time = time.time()
     train_losses, val_losses = [], []
+    best_train_loss = float('inf')
 
+    print(f"Training experiment {run}")
     for i in range(epochs):
         model.train()
         epoch_start_time = time.time()
         epoch_train_loss = 0
 
         for x, y in small_train_loader: 
+            x = x.to(device)
             optimizer.zero_grad()
-            t, r = sample_t_r(batch_size)
+            t, r = sample_t_r(x.shape[0])
+            t = t.to(device)
+            r = r.to(device)
 
             # reshape t and r for image operations
             t_reshape = t.view(-1, 1, 1, 1)  # (B, 1, 1, 1) 
@@ -100,7 +118,10 @@ if __name__ == "__main__":
         model.eval()
         epoch_val_loss = 0
         for x, y in small_val_loader:
-            t, r = sample_t_r(batch_size)
+            x = x.to(device)
+            t, r = sample_t_r(x.shape[0])
+            t = t.to(device)
+            r = r.to(device)
             t_reshape = t.view(-1, 1, 1, 1)
             r_reshape = r.view(-1, 1, 1, 1)
 
@@ -117,9 +138,15 @@ if __name__ == "__main__":
             epoch_val_loss += val_loss.item()
         
         val_losses.append(epoch_val_loss / len(small_val_loader))
+        scheduler.step()
 
         plot_loss(train_losses, val_losses, save_path)
-        print(f"Epoch {i+1}: {time.time() - epoch_start_time}. Train loss: {train_losses[-1]}, Val loss: {val_losses[-1]}") 
+        print(f"Epoch {i+1}: {(time.time() - epoch_start_time) / 60:.2f} min. Train loss: {train_losses[-1]}, Val loss: {val_losses[-1]}")
+
+        # save best checkpoiint (based on train loss for overfit task)
+        if train_losses[-1] < best_train_loss:
+            best_train_loss = train_loss[-1]
+            torch.save(model.state_dict(), os.path.join(save_path, "meanflow_best.pt"))
 
     torch.save(model.state_dict(), os.path.join(save_path, "meanflow.pt"))
-    print("Total training time: ", time.time() - train_start_time)
+    print(f"Total training time: {(time.time() - train_start_time) / 60:.2f} min")

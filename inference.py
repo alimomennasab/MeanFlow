@@ -1,17 +1,17 @@
 import os
 import random
-
+import torch
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from torch.utils.data import DataLoader, Subset
+from tqdm import tqdm
 
 from train import MeanFlowDataset
 from unet import UNet
 
-run = 4
+run = 5
 batch_size = 3
-seed = 7
+seed = 42
 num_generated = 256
 run_dir = os.path.join("experiments", f"run{run}")
 checkpoint_path = os.path.join(run_dir, "meanflow.pt")
@@ -45,19 +45,13 @@ x = x.to(device)
 
 with torch.no_grad():
     generated_batches = []
-    for start in range(0, num_generated, batch_size):
+    for start in tqdm(range(0, num_generated, batch_size)):
         current_batch_size = min(batch_size, num_generated - start)
-        e = torch.randn(
-            current_batch_size,
-            x.shape[1],
-            x.shape[2],
-            x.shape[3],
-            device=device,
-            generator=noise_generator,
-        )
+        e = torch.randn(x.shape)
         r = torch.zeros(current_batch_size, device=device)
         t = torch.ones(current_batch_size, device=device)
-        x_gen = (e - model(e, r, t)).clamp(0.0, 1.0)
+        x_gen = e - model(e, r, t) # r = 0, t = 1
+        x_gen.clamp(0.0, 1.0) # normalize to 0, 1
         generated_batches.append(x_gen.cpu())
 
 gt = x.detach().cpu()
@@ -80,7 +74,7 @@ for i, label in enumerate(labels.tolist()):
     axes[1, i].axis("off")
 
 plt.tight_layout()
-save_path = os.path.join(run_dir, "samples.png")
+save_path = os.path.join(run_dir, "samplesNEW.png")
 plt.savefig(save_path)
 plt.show()
 print(f"Saved samples to {save_path}")

@@ -1,48 +1,82 @@
 import os
-import torch
+import random
+
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
+from torch.utils.data import DataLoader, Subset
 
+from train import MeanFlowDataset
 from unet import UNet
 
-run = 0
+run = 4
+batch_size = 3
+seed = 7
+num_generated = 256
 run_dir = os.path.join("experiments", f"run{run}")
 checkpoint_path = os.path.join(run_dir, "meanflow.pt")
 
-gt_paths = [
-    "data/imagenette2/train_npy/n02102040_npy/ILSVRC2012_val_00008334.npy",  # dog
-    "data/imagenette2/train_npy/n03445777_npy/ILSVRC2012_val_00002314.npy",  # golf ball
-    "data/imagenette2/train_npy/n01440764_npy/ILSVRC2012_val_00009346.npy",  # tench
-]
-titles = ["dog", "golf ball", "tench"]
+
+def set_seed(seed_value: int) -> None:
+    random.seed(seed_value)
+    np.random.seed(seed_value)
+    torch.manual_seed(seed_value)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed_value)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
+set_seed(seed)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+noise_generator = torch.Generator(device=device).manual_seed(seed + 1)
+
+train_dataset = MeanFlowDataset("data/imagenette2/train_npy/")
+train_subset = Subset(train_dataset, [0, 1, 2])
+small_train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
 
 model = UNet(in_ch=3, ch=(64, 128, 256, 512), d_emb=256)
-model.load_state_dict(torch.load(checkpoint_path, map_location="cpu", weights_only=True))
+model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True))
+model = model.to(device)
 model.eval()
 
-def load_gt(path):
-    img = np.load(path).astype(np.float32) / 255.0
-    return img
+x, labels = next(iter(small_train_loader))
+x = x.to(device)
 
-def sample(model, num_samples=3):
-    with torch.no_grad():
-        e = torch.randn(num_samples, 3, 64, 64)
-        r = torch.zeros(num_samples)
-        t = torch.ones(num_samples)
-        x = e - model(e, r, t)
-    return x.clamp(0, 1).permute(0, 2, 3, 1).numpy()
+with torch.no_grad():
+    generated_batches = []
+    for start in range(0, num_generated, batch_size):
+        current_batch_size = min(batch_size, num_generated - start)
+        e = torch.randn(
+            current_batch_size,
+            x.shape[1],
+            x.shape[2],
+            x.shape[3],
+            device=device,
+            generator=noise_generator,
+        )
+        r = torch.zeros(current_batch_size, device=device)
+        t = torch.ones(current_batch_size, device=device)
+        x_gen = (e - model(e, r, t)).clamp(0.0, 1.0)
+        generated_batches.append(x_gen.cpu())
 
-gt_images = [load_gt(path) for path in gt_paths]
-sampled_images = sample(model, num_samples=3)
+gt = x.detach().cpu()
+all_generated = torch.cat(generated_batches, dim=0)
 
-fig, axes = plt.subplots(2, 3, figsize=(9, 6))
-for i, title in enumerate(titles):
+mse_matrix = ((gt[:, None] - all_generated[None, :]) ** 2).mean(dim=(2, 3, 4))
+best_mse, best_idx = mse_matrix.min(dim=1)
+
+gt_images = gt.permute(0, 2, 3, 1).numpy()
+best_images = all_generated[best_idx].permute(0, 2, 3, 1).numpy()
+
+fig, axes = plt.subplots(2, 3, figsize=(10, 6))
+for i, label in enumerate(labels.tolist()):
     axes[0, i].imshow(gt_images[i])
-    axes[0, i].set_title(f"GT: {title}")
+    axes[0, i].set_title(f"GT (label {label})")
     axes[0, i].axis("off")
 
-    axes[1, i].imshow(sampled_images[i])
-    axes[1, i].set_title(f"Sample: {title}")
+    axes[1, i].imshow(best_images[i])
+    axes[1, i].set_title(f"Best sample MSE={best_mse[i].item():.5f}")
     axes[1, i].axis("off")
 
 plt.tight_layout()
@@ -50,3 +84,6 @@ save_path = os.path.join(run_dir, "samples.png")
 plt.savefig(save_path)
 plt.show()
 print(f"Saved samples to {save_path}")
+
+for i, mse in enumerate(best_mse.tolist()):
+    print(f"Image {i} best reconstruction MSE over {num_generated} samples: {mse:.8f}")

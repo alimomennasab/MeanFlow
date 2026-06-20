@@ -1,5 +1,8 @@
-# 2d unet backbone with residual blocks consisting of 2 conv operations, injected with r & t timesteps
-# unet encoder resolution: 64 -> 32 -> 16 -> 8
+"""
+2D UNet backbone with residual blocks consisting of 2 convolutional operations.
+The residual blocks are injected with r & t timestep embeddings.
+The UNet encoder uses 4 feature map resolutions (64 x 64 -> 32 x 32 -> 16 x 16 -> 8 x 8)
+"""
 
 import math
 import torch
@@ -7,11 +10,20 @@ import torch.nn as nn
 
 # timestep sampling and embedding helpers
 def sample_t_r(batch_size, percent_unequal=0.25):
+    """Sample (t, r) pairs for MeanFlow training.
+
+    Args:
+        batch_size: Number of (t, r) pairs to sample.
+        percent_unequal: Target fraction of the batch where r != t. Remaining samples use r == t.
+
+    Returns:
+        Tuple (t, r) where both tensors have shape (batch_size,) and r <= t.
+    """
     # percent_unequal: fraction of batch where r != t
     t = torch.rand(batch_size)
     r = torch.rand(batch_size) * t  # r in [0, t], so r <= t
 
-    num_unequal = max(int(percent_unequal * batch_size), 1)
+    num_unequal = max(int(percent_unequal * batch_size), 1) # with batch size of 3, we want 1 (33%) to have r != t
 
     unequal_mask = torch.zeros(batch_size, dtype=torch.bool)
     unequal_indices = torch.randperm(batch_size)[:num_unequal] # randomly choose percent_unequal% of (r, t) to be unequal
@@ -22,6 +34,14 @@ def sample_t_r(batch_size, percent_unequal=0.25):
     return t, r
 
 def timestep_emb(timesteps, d_emb):
+    """Create sinusoidal embeddings for a batch of timesteps.
+
+    Args:
+        timesteps: Tensor of shape (B,).
+        d_emb: Embedding dimension
+    Returns:
+        Tensor of shape (B, d_emb).
+    """
     half_dim = d_emb // 2
     freqs = torch.exp(
         -math.log(10000) * torch.arange(half_dim) / (half_dim - 1)
@@ -45,8 +65,16 @@ def timestep_emb(timesteps, d_emb):
 
 def create_timestep_embs(r, t, d_emb):
     """
-    Embedding (t,t-r), that is, time and interval, achieves the best result, while directly embedding (r,t) 
-    performs almost as well. Notably, even embedding only the interval t-r yields reasonable results.
+    We embed (t, t-r) because the MeanFlow paper demonstrates this provides the best results. 
+    Embedding (r, t) gives slightly worse results.
+
+    Args:
+        r: Tensor of shape (B,).
+        t: Tensor of shape (B,).
+        d_emb: Embedding dimension
+    Returns:
+        Tensors t_embs and tr_embs, which are each of shape (B, d_emb).
+
     """
     t_embs = timestep_emb(t, d_emb) # t embedding
     tr_embs = timestep_emb(t-r, d_emb) # interval embedding
@@ -86,7 +114,7 @@ class UNet(nn.Module):
         super().__init__()
         self.d_emb = d_emb
 
-        # embedding MLPs (sinusoidal dim -> d_emb, matching MeanFlow TimestepEmbedder)
+        # embedding MLPs like MeanFlow code
         self.mlp_t = nn.Sequential(
             nn.Linear(d_emb, d_emb),
             nn.SiLU(),
@@ -124,12 +152,17 @@ class UNet(nn.Module):
         self.out_proj = nn.Conv2d(ch[0], in_ch, kernel_size=3, padding=1)
 
     def forward(self, x, r, t):
+        """Run a forward pass.
+
+        Args:
+            x: Noisy image tensor (B, C, H, W). Here, it is (B, 3, 64, 64)
+            r: Start-time tensor (B,), with r <= t.
+            t: End-time tensor (B,), with r <= t.
+        """
         t_embs, tr_embs = create_timestep_embs(r, t, self.d_emb)
         t_embs = self.mlp_t(t_embs)
         tr_embs = self.mlp_tr(tr_embs)
         tembs = t_embs + tr_embs
-
-        # x: (B, 3, 64, 64)
 
         # encoder
         x = self.in_project(x)          # (B, 64, 64, 64)

@@ -1,3 +1,7 @@
+"""Run one-step MeanFlow sampling repeatedly, compute their MSE difference from 3 training samples, and display the 3
+closest generations. 
+"""
+
 import os
 import random
 import torch
@@ -9,15 +13,16 @@ from tqdm import tqdm
 from train import MeanFlowDataset
 from unet import UNet
 
-run = 5
+run = 7
 batch_size = 3
 seed = 42
-num_generated = 256
+num_generated = 300
 run_dir = os.path.join("experiments", f"run{run}")
 checkpoint_path = os.path.join(run_dir, "meanflow.pt")
 
 
 def set_seed(seed_value: int) -> None:
+    """Set seeds for Python, NumPy, and PyTorch."""
     random.seed(seed_value)
     np.random.seed(seed_value)
     torch.manual_seed(seed_value)
@@ -47,6 +52,8 @@ with torch.no_grad():
     generated_batches = []
     for start in tqdm(range(0, num_generated, batch_size)):
         current_batch_size = min(batch_size, num_generated - start)
+
+        # One-step generation from MeanFlow: x_gen = e - u(e, r=0, t=1).
         e = torch.randn(x.shape)
         r = torch.zeros(current_batch_size, device=device)
         t = torch.ones(current_batch_size, device=device)
@@ -57,6 +64,7 @@ with torch.no_grad():
 gt = x.detach().cpu()
 all_generated = torch.cat(generated_batches, dim=0)
 
+# For each ground-truth image, find the closest generated sample by pixel MSE
 mse_matrix = ((gt[:, None] - all_generated[None, :]) ** 2).mean(dim=(2, 3, 4))
 best_mse, best_idx = mse_matrix.min(dim=1)
 
@@ -79,5 +87,6 @@ plt.savefig(save_path)
 plt.show()
 print(f"Saved samples to {save_path}")
 
+# Print nearest reconstruction quality for each target image
 for i, mse in enumerate(best_mse.tolist()):
     print(f"Image {i} best reconstruction MSE over {num_generated} samples: {mse:.8f}")

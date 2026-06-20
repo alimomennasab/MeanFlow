@@ -1,3 +1,16 @@
+"""
+This script trains a MeanFlow implementation with the imagenette dataset.
+This script has two modes:
+- `full_set=True`: train on all available train/val samples.
+- `full_set=False`: train on the first 3 train/val samples to test the objective/sampler.
+
+For each batch, it builds a noisy interpolation state `z` and target velocity `v`,
+then computes a JVP-based target from the MeanFlow formulation and optimizes an
+MSE objective.
+
+For each training run, update the variable 'run' to ensure no previous experiments are overwritten.
+"""
+
 import os
 import time
 import random
@@ -6,10 +19,12 @@ import torch.nn as nn
 import numpy as np
 from torch.utils.data import DataLoader, Dataset
 from unet import UNet, sample_t_r
-from utils import plot_loss, create_experiment_dir
+from utils import plot_loss, create_experiment_dir, set_seed
 
 class MeanFlowDataset(Dataset):
-    """Load preprocessed 64x64x3 images from ``train_npy/{class}_npy/*.npy``."""
+    """
+    Load preprocessed (cropped, npy) imagenette data, and normalize to [0, 1]
+    """
 
     def __init__(self, data_dir: str):
         class_dirs = sorted(
@@ -29,25 +44,15 @@ class MeanFlowDataset(Dataset):
     def __getitem__(self, index: int) -> tuple[torch.Tensor, int]:
         path, label = self.samples[index]
         image = np.load(path)
-        image = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+        image = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0 # convert to pytorch format CHW
         return image, label
 
 
-def set_seed(seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
-
-
 if __name__ == "__main__":
-    # hyperparams & config
-    run = 6
+    # Hyperparams & config
+    run = 7
     seed = 42
-    full_set = False
+    full_set = False  # False: use the 3 sample dataset for overfitting
     epochs = 10000
     lr = 1e-3
     batch_size = 3
@@ -55,7 +60,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     set_seed(seed)
 
-    # dataset, dataloader, save path
+    # Dataset paths and output directory.
     save_path = create_experiment_dir(run)
     train_dataset_path = "data/imagenette2/train_npy/"
     val_dataset_path = "data/imagenette2/val_npy/"
@@ -68,7 +73,7 @@ if __name__ == "__main__":
     image, label = train_dataset[0]
     print(f"sample shape: {image.shape}, label: {label}")
 
-    # choose either small dataset (3 samples) or full dataset
+    # Choose either small dataset (3 samples) or full imagenette2 dataset
     if full_set:
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -78,13 +83,13 @@ if __name__ == "__main__":
         train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
         val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False)
 
-    # initialize model, optimizer, and scheduler
+    # Initialize model, optimizer, and scheduler
     model = UNet(in_ch=3, ch=(64, 128, 256, 512), d_emb=256)
     model = model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.0)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-5)
 
-    # training loop
+    # Training loop
     train_start_time = time.time()
     train_losses, val_losses = [], []
     best_train_loss = float('inf')
@@ -98,23 +103,27 @@ if __name__ == "__main__":
         for x, y in train_loader: 
             x = x.to(device)
             optimizer.zero_grad()
-            t, r = sample_t_r(x.shape[0])
+            t, r = sample_t_r(batch_size)
             t = t.to(device)
             r = r.to(device)
 
-            # reshape t and r for image operations
+            # Reshape timesteps for usage in image equations
             t_reshape = t.view(-1, 1, 1, 1)  # (B, 1, 1, 1) 
             r_reshape = r.view(-1, 1, 1, 1)  # (B, 1, 1, 1) 
 
+            # MeanFlow objective:
+            #   z = (1 - t) * x + t * e
+            #   v = e - x
             e = torch.randn_like(x)
             z = (1 - t_reshape) * x + t_reshape * e
             v = e - x
 
+            # JVP through u_fn w.r.t. time direction to build target field
             u, dudt = torch.func.jvp(
                 model.u_fn, (z, r, t), (v, torch.zeros_like(r), torch.ones_like(t))
             )
             u_tgt = v - (t_reshape - r_reshape) * dudt
-            train_loss = loss_fn(u, u_tgt.detach())
+            train_loss = loss_fn(u, u_tgt.detach()) # detach stops gradient flow
             train_loss.backward()
             optimizer.step()
             epoch_train_loss += train_loss.item()
@@ -125,7 +134,7 @@ if __name__ == "__main__":
         epoch_val_loss = 0
         for x, y in val_loader:
             x = x.to(device)
-            t, r = sample_t_r(x.shape[0])
+            t, r = sample_t_r(batch_size)
             t = t.to(device)
             r = r.to(device)
             t_reshape = t.view(-1, 1, 1, 1)
@@ -149,7 +158,7 @@ if __name__ == "__main__":
         plot_loss(train_losses, val_losses, save_path)
         print(f"Epoch {i+1}: {(time.time() - epoch_start_time) / 60:.2f} min. Train loss: {train_losses[-1]}, Val loss: {val_losses[-1]}")
 
-        # save best checkpoiint (based on train loss for overfit task)
+        # Save best checkpoint (based on train loss for overfit task)
         if train_losses[-1] < best_train_loss:
             best_train_loss = train_losses[-1]
             torch.save(model.state_dict(), os.path.join(save_path, "meanflow_best.pt"))

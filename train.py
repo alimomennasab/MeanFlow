@@ -45,9 +45,10 @@ def set_seed(seed: int) -> None:
 
 if __name__ == "__main__":
     # hyperparams & config
-    run = 5
+    run = 6
     seed = 42
-    epochs = 5000
+    full_set = False
+    epochs = 10000
     lr = 1e-3
     batch_size = 3
     loss_fn = nn.MSELoss()
@@ -67,10 +68,15 @@ if __name__ == "__main__":
     image, label = train_dataset[0]
     print(f"sample shape: {image.shape}, label: {label}")
 
-    # subset of 3 samples
-    train_subset = torch.utils.data.Subset(train_dataset, [0, 1, 2])
-    small_train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
-    small_val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False)
+    # choose either small dataset (3 samples) or full dataset
+    if full_set:
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    else:
+        train_subset = torch.utils.data.Subset(train_dataset, [0, 1, 2])
+        val_subset = torch.utils.data.Subset(val_dataset, [0, 1, 2])
+        train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
+        val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False)
 
     # initialize model, optimizer, and scheduler
     model = UNet(in_ch=3, ch=(64, 128, 256, 512), d_emb=256)
@@ -89,7 +95,7 @@ if __name__ == "__main__":
         epoch_start_time = time.time()
         epoch_train_loss = 0
 
-        for x, y in small_train_loader: 
+        for x, y in train_loader: 
             x = x.to(device)
             optimizer.zero_grad()
             t, r = sample_t_r(x.shape[0])
@@ -113,11 +119,11 @@ if __name__ == "__main__":
             optimizer.step()
             epoch_train_loss += train_loss.item()
 
-        train_losses.append(epoch_train_loss / len(small_train_loader))
+        train_losses.append(epoch_train_loss / len(train_loader))
 
         model.eval()
         epoch_val_loss = 0
-        for x, y in small_val_loader:
+        for x, y in val_loader:
             x = x.to(device)
             t, r = sample_t_r(x.shape[0])
             t = t.to(device)
@@ -137,7 +143,7 @@ if __name__ == "__main__":
             val_loss = loss_fn(u, u_tgt.detach())
             epoch_val_loss += val_loss.item()
         
-        val_losses.append(epoch_val_loss / len(small_val_loader))
+        val_losses.append(epoch_val_loss / len(val_loader))
         scheduler.step()
 
         plot_loss(train_losses, val_losses, save_path)
@@ -145,7 +151,7 @@ if __name__ == "__main__":
 
         # save best checkpoiint (based on train loss for overfit task)
         if train_losses[-1] < best_train_loss:
-            best_train_loss = train_loss[-1]
+            best_train_loss = train_losses[-1]
             torch.save(model.state_dict(), os.path.join(save_path, "meanflow_best.pt"))
 
     torch.save(model.state_dict(), os.path.join(save_path, "meanflow.pt"))

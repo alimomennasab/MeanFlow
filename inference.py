@@ -82,7 +82,7 @@ for i, label in enumerate(labels.tolist()):
     axes[1, i].axis("off")
 
 plt.tight_layout()
-save_path = os.path.join(run_dir, "samplesNEW.png")
+save_path = os.path.join(run_dir, "samples.png")
 plt.savefig(save_path)
 plt.show()
 print(f"Saved samples to {save_path}")
@@ -90,3 +90,4 @@ print(f"Saved samples to {save_path}")
 # Print nearest reconstruction quality for each target image
 for i, mse in enumerate(best_mse.tolist()):
     print(f"Image {i} best reconstruction MSE over {num_generated} samples: {mse:.8f}")
+ 

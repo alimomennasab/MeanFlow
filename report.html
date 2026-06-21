@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MeanFlow Report</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2rem 1rem 3rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.7;
+        letter-spacing: 0.01em;
+        background: #f6f6f6;
+        color: #000;
+      }
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 2rem 2.25rem;
+        background: #fff;
+        border: 2px solid #000;
+        box-shadow: 6px 6px 0 #000;
+      }
+      section {
+        padding: 1rem 0 0.5rem;
+        margin: 1rem 0 1.25rem;
+        border-top: 1px solid #000;
+      }
+      section:first-of-type {
+        border-top: 0;
+        margin-top: 0.5rem;
+        padding-top: 0.25rem;
+      }
+      h1, h2, h3 {
+        line-height: 1.25;
+        letter-spacing: 0;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+      }
+      h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.35rem;
+      }
+      h3 {
+        margin: 1.1rem 0 0.5rem;
+        font-size: 1.05rem;
+      }
+      p, li {
+        font-size: 1rem;
+      }
+      p {
+        margin: 0.6rem 0 0.9rem;
+      }
+      ul, ol {
+        margin: 0.5rem 0 1rem 1.2rem;
+        padding-left: 1rem;
+      }
+      li + li {
+        margin-top: 0.35rem;
+      }
+      strong {
+        font-weight: 650;
+      }
+      body,
+      main,
+      section,
+      p,
+      li,
+      table,
+      pre,
+      img {
+        background: #fff;
+        color: #000;
+      }
+      .byline {
+        margin-top: 0.25rem;
+        margin-bottom: 1.35rem;
+        color: #000;
+        border-left: 3px solid #000;
+        padding-left: 0.6rem;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        background: #fff;
+        color: #000;
+        border: 1px solid #000;
+        padding: 0.08rem 0.3rem;
+        border-radius: 2px;
+      }
+      .var {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        border: 1px solid #000;
+        padding: 0.05rem 0.25rem;
+        white-space: nowrap;
+      }
+      .equation {
+        border: 2px solid #000;
+        padding: 0.85rem 1rem;
+        margin: 0.9rem 0 1rem;
+        text-align: center;
+        font-size: 1.08rem;
+        background: #fbfbfb;
+      }
+      .equation code {
+        border: 0;
+        padding: 0;
+      }
+      .cite {
+        margin-left: 0.2rem;
+        font-size: 0.9em;
+        text-decoration: none;
+        color: #000;
+      }
+      .cite:hover {
+        text-decoration: underline;
+      }
+      pre {
+        margin: 0.75rem 0 1rem;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid #000;
+        overflow-x: auto;
+      }
+      pre code {
+        border: 0;
+        padding: 0;
+        background: transparent;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0 1.75rem;
+      }
+      th, td {
+        border: 1px solid #000;
+        padding: 0.55rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        font-weight: 650;
+        background: #f4f4f4;
+      }
+      figcaption {
+        margin-top: 0.35rem;
+      }
+      figure {
+        margin: 1.5rem 0;
+      }
+      img {
+        max-width: 100%;
+        height: auto;
+        border: 1px solid #000;
+      }
+      @media (max-width: 720px) {
+        main {
+          padding: 1.25rem 1rem;
+          box-shadow: none;
+        }
+        h1 {
+          font-size: 1.65rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>MeanFlow Report</h1>
+      <p class="byline"><strong>Ali Momennasab</strong> - June 20, 2026</p>
+
+      <section>
+        <h2>MeanFlow: what is it and why is it important?</h2>
+        <p>
+          Flow matching models are a type of generative model that shift one data distribution to
+          another data distribution by learning the velocity field between the two. Flow matching
+          models are trained to learn the instantaneous velocity of data samples at a timestep
+          between <span class="var">t = 0</span> (the initial data distribution) and
+          <span class="var">t = 1</span> (the final data distribution). Generating data from a
+          trained flow matching model involves taking a sample from the initial distribution (like
+          a Gaussian distribution), integrating the velocity field step-by-step from
+          <span class="var">t = 0</span> to <span class="var">t = 1</span>, and shifting the
+          sample towards the target distribution through the integrated displacement path. However,
+          flow matching can be computationally expensive because the quality of the final sample
+          generally improves with more integration steps.
+        </p>
+        <p>
+          MeanFlow fixes this by providing single-step generation. Instead of learning the
+          instantaneous velocity of many points between two distributions, MeanFlow learns the
+          average velocity field of two times, <span class="var">r</span> and
+          <span class="var">t</span>, between two distributions directly.<a class="cite"
+            href="https://arxiv.org/abs/2505.13447"
+            target="_blank"
+            rel="noopener noreferrer">[1]</a>
+        </p>
+        <div class="equation">
+          <code>u(z_t, r, t) = v(z_t, t) - (t - r) * d/dt [u(z_t, r, t)]</code>
+        </div>
+        <p>
+          The above MeanFlow identity states that average velocity <code>u</code> between times
+          <code>r</code> and <code>t</code> can be represented by the instantaneous velocity and
+          the rate of change of the average velocity between <code>r</code> and <code>t</code>.
+          However, because <span class="var">u</span> is represented by a neural network,
+          computing the derivative of <span class="var">u</span> requires expensive Jacobian
+          calculations. To perform the derivative efficiently, MeanFlow uses a Jacobian-vector
+          product (JVP) to compute the directional derivative of <span class="var">u</span> for
+          only the input state <span class="var">z_t</span>, which is much less computationally
+          intensive.
+        </p>
+      </section>
+
+      <section>
+        <h2>MeanFlow Implementation</h2>
+        <p>
+          I implemented a MeanFlow model with a UNet backbone and uniform distribution timestep
+          sampler using the paper and source code as reference.<a class="cite"
+            href="https://arxiv.org/abs/2505.13447"
+            target="_blank"
+            rel="noopener noreferrer">[1]</a><a class="cite"
+            href="https://github.com/Gsunshine/meanflow"
+            target="_blank"
+            rel="noopener noreferrer">[2]</a>
+        </p>
+        <h3>Timestep sampling and embedding</h3>
+        <p>
+          A vital part of MeanFlow is the method of sampling for timesteps <code>r</code> and
+          <code>t</code> during training. The MeanFlow paper experimented with sampling from
+          uniform and lognorm distributions, and achieved the best results from lognorm.<a
+            class="cite"
+            href="https://arxiv.org/abs/2505.13447"
+            target="_blank"
+            rel="noopener noreferrer">[1]</a> I sampled from a uniform distribution between 0 and
+          1 due to the simplicity of its implementation. To satisfy the condition that timestep
+          <code>r</code> is &lt;= <code>t</code>, my sampler first creates tensor <code>t</code>
+          of shape ([batch_size]) with random values within 0 and 1, then created tensor
+          <code>r</code> of the same shape and distribution, except it is scaled by t (r * t).
+          Since t is between 0 and 1, <code>r</code>'s elements would be scaled to always be less
+          than or equal to t's elements.
+        </p>
+        <p>
+          The authors also ensure that a certain percentage of all (r, t) sample pairs had r != t.
+          I chose 25% because the paper achieved their best results with that ratio.<a class="cite"
+            href="https://arxiv.org/abs/2505.13447"
+            target="_blank"
+            rel="noopener noreferrer">[1]</a> I enforced this ratio by creating a mask that
+          randomly chooses 25% of <code>r</code>'s tensor to be 'False', and used torch.where to
+          turn all false <code>r</code> elements to the corresponding <code>t</code> element. I
+          utilized their source code as a reference for the sampler's implementation.<a
+            class="cite"
+            href="https://github.com/Gsunshine/meanflow"
+            target="_blank"
+            rel="noopener noreferrer">[2]</a>
+        </p>
+        <p>
+          After the timesteps are sampled, they must be embedded in order to condition the
+          backbone model. I chose sinusoidal positional embeddings because they are quick to
+          compute and do not require any training.<a class="cite"
+            href="https://arxiv.org/abs/1706.03762"
+            target="_blank"
+            rel="noopener noreferrer">[6]</a> I initially wanted to embed r and t separately and
+          combine their embeddings, but the paper says they "achieved the best results with
+          embedding (t,t-r), that is, time and interval, achieves the best result, while directly
+          embedding (r,t) performs almost as well", so I decided to condition with (t, t - r).
+          After embedding t and t-r, I passed both embeddings through an MLP (as MeanFlow's source
+          code does) before combining them. I implemented the sinusoidal embeddings from
+          reference.<a class="cite"
+            href="https://arxiv.org/abs/2505.13447"
+            target="_blank"
+            rel="noopener noreferrer">[1]</a><a class="cite"
+            href="https://github.com/Gsunshine/meanflow"
+            target="_blank"
+            rel="noopener noreferrer">[2]</a>
+        </p>
+
+        <h3>Backbone</h3>
+        <p>
+          In my MeanFlow implementation, I chose a UNet backbone instead of a DiT or ViT because I
+          wanted to start with a smaller architecture and I was already familiar with UNet from
+          previous segmentation projects.<a class="cite"
+            href="https://arxiv.org/abs/1505.04597"
+            target="_blank"
+            rel="noopener noreferrer">[5]</a> My UNet consisted of residual blocks<a class="cite"
+            href="https://arxiv.org/abs/1512.03385"
+            target="_blank"
+            rel="noopener noreferrer">[4]</a> with two sets of convolutions and a skip connection
+          for improved training stability. The encoder and decoder used 3 residual blocks each,
+          which span the resolutions 64 x 64, 32 x 32, 16 x 16, and 8 x 8. I chose these
+          resolutions because I preprocessed my dataset to be cropped to 64 x 64 images, and I
+          thought going down to 8 x 8 was a good initial tradeoff between feature map amount and
+          computational load. The UNet is conditioned with timesteps <code>r</code> and
+          <code>t</code>, which are embedded via sinusoidal positional embeddings and injected
+          between the convolutional layers of the residual blocks. However, while I was planning on
+          also conditioning the UNet with image labels, I unfortunately ran out of time to do so. I
+          wrote the UNet from scratch, and used Cursor to double check my code.
+        </p>
+
+        <h3>Image Sampler/Inference</h3>
+        <p>
+          For inference, I followed their one-step sampling method. The idea is to jump directly
+          between two timesteps with one model evaluation of the MeanFlow network.<a class="cite"
+            href="https://arxiv.org/abs/2505.13447"
+            target="_blank"
+            rel="noopener noreferrer">[1]</a>
+        </p>
+        <div class="equation">
+          <code>z_r = z_t - (t - r) * u_theta(z_t, r, t)</code>
+        </div>
+        <p>
+          I implemented this equation in <code>inference.py</code> using the same setup as their
+          reference approach: sample a starting latent, choose <span class="var">r</span> and
+          <span class="var">t</span> for the one-step transition, run the model once to predict
+          <code>u_theta</code>, and apply the update above to get the final sample.<a class="cite"
+            href="https://github.com/Gsunshine/meanflow"
+            target="_blank"
+            rel="noopener noreferrer">[2]</a>
+        </p>
+      </section>
+
+      <section>
+        <h2>Dataset</h2>
+        <p>
+          I trained the UNet with ImageNette-2<a class="cite"
+            href="https://github.com/fastai/imagenette"
+            target="_blank"
+            rel="noopener noreferrer">[3]</a>, a 10-class subset of ImageNet. I resized each image
+          to 64 x 64 for reduced computational load without losing too much detail, and normalized
+          pixel values.
+        </p>
+      </section>
+
+      <section>
+        <h2>Implementation Steps</h2>
+        <p>The entire process of my MeanFlow implementation, in order:</p>
+        <ol>
+          <li>Created <code>data.py</code> to explore data samples.</li>
+          <li>Implemented an unconditioned UNet backbone with residual blocks.</li>
+          <li>
+            Modified the UNet to be conditioned with <code>r</code> and <code>t</code> embeddings,
+            and implemented sinusoidal embeddings.
+          </li>
+          <li>
+            Modified <code>data.py</code> to convert the training and validation sets from raw
+            JPEGs to cropped 64 x 64 NPY files for faster training.
+          </li>
+          <li>
+            Implemented the timestep sampler and a training loop skeleton in <code>train.py</code>
+            (minus the MeanFlow objective and JVP usage).
+          </li>
+          <li>
+            Implemented helper functions for training in <code>utils.py</code> (for example, loss
+            curve plotting and experiment saving).
+          </li>
+          <li>Implemented the MeanFlow objective inside the training loop, including JVP.</li>
+          <li>Implemented the one-step sampler in <code>inference.py</code>.</li>
+          <li>
+            Began overfitting experiments on 3 samples (see experiment section below), and during
+            experiments used Cursor to port training and sampling code into a single Jupyter
+            notebook for Google Colab usage.
+          </li>
+        </ol>
+      </section>
+
+      <section>
+        <h2>Implementation Issues</h2>
+        <p>This section details the main implementation issues and how I fixed them.</p>
+
+        <h3>Sampler ratio issue</h3>
+        <p>
+          When creating the t &amp; r sampler, I wanted to sample from a uniform distribution, where
+          for a batch, 25% of all (r, t) pairs would have r != t. The paper had that ratio, and
+          had their best results with that. However, when testing the t &amp; r sampler, it seemed
+          like it was not consistently 25% of the batch. With batch size = 8, I should always get
+          2 unequal values, but I'd sometimes get 0, 1 or 3.
+        </p>
+        <p><strong>Mistake in syntax:</strong></p>
+        <pre><code>mask = torch.rand(batch_size, device=device) &lt; percent_unequal
+r = torch.where(mask, t, r)</code></pre>
+        <p>
+          doesn't create a mask where percent_unequal percentage of elements are turned to false, it only turns elements that are below percent_unequal magnitude to false.
+        </p>
+
+        <h3>Issue with Meanflow objective</h3>
+        <pre><code>File "/Users/alimomennasab/Desktop/simworld-exploration/MeanFlow/train.py", line 84, in &lt;module&gt;
+    z = (1 - t) * x + t * e
+        ~~~~~~~~^~~
+RuntimeError: The size of tensor a (3) must match the size of tensor b (64) at non-singleton dimension 3</code></pre>
+        <p>
+          One of the tensors had a size mismatch. I figured it's because the t tensor is of size
+          batch_size, which was 3 while I was trying to overfit on 3 samples, but to double check,
+          I printed out the shape of each tensor in that equation.
+        </p>
+        <pre><code>t shape:  torch.Size([3])
+x shape:  torch.Size([3, 3, 64, 64])
+e shape:  torch.Size([3, 3, 64, 64])</code></pre>
+        <p>
+          To fix this, I created reshaped versions of r and t of shape [B=3, 3, 1, 1] with
+          t_reshape = t.view(-1, 1, 1, 1) and r_reshape = r.view(-1, 1, 1, 1). That way, I could
+          pass the original copies of t and r into the model, which expects them to be of size [B]
+          before they are embedded, and use the reshaped versions for image operations such as
+          z = (1 - t_reshape) * x + t_reshape * e.
+        </p>
+
+        <h3>Error with jvp usage in MeanFlow objective</h3>
+        <pre><code>u, dudt = torch.func.jvp(fn, (z, r, t), (v, 0, 1))
+RuntimeError: jvp(f, primals, tangents): Expected tangents to only contain Tensors, got &lt;class 'int'&gt;</code></pre>
+        <p>
+          I mistakenly forgot to use tensors of 0 and 1 instead of the integers alone. I replaced the 0, 1 within the JVP with torch.zeros_like(t), torch.ones_like(t)
+        </p>
+
+        <h3>Error with jvp usage in MeanFlow objective</h3>
+        <pre><code>u, dudt = torch.func.jvp(model(z, r, t), (z, r, t), (v, torch.zeros_like(t), torch.ones_like(t)))</code></pre>
+        <p>
+          JVP expects a callable function, but model(z, r, t) returns logits. To fix this, I
+          created helper function u_fn(z, t, r) within the UNet that calls model.forward(z, t, r),
+          and used model.u_fn inside of the jvp.
+        </p>
+
+        <h3>Error</h3>
+        <pre><code>RuntimeError: During a grad (vjp, jvp, grad, etc) transform, the function provided attempted to call in-place operation (aten::add_.Tensor) that would mutate a captured Tensor. This is not supported; please rewrite the function being transformed to explicitly accept the mutated Tensor(s) as inputs.</code></pre>
+        <p>
+          It turns out that we cannot use BatchNorm inside of the UNet because it uses in-place
+          operations, which JVP doesn't support. GroupNorm does work for JVP, so I replaced all
+          batchnorms with groupnorm.
+        </p>
+
+        <h3>Poor initial loss</h3>
+        <p>
+          Poor initial loss: mistakenly thought ~100-500 epochs would be enough with such a large backbone and small dataset, just needed to train for way, way more epochs
+        </p>
+
+        <h3>Poor generation quality</h3>
+        <p>
+          My inference script initially only produced 3 images, which looked barely anything like
+          the real ground truth images. I realized it would be better to produce much more images
+          (~300), and use the loss objective (MSE) as a way to choose the 3 best images to the GT,
+          and display those. That significantly improved it.
+        </p>
+      </section>
+
+      <section>
+        <h2>3-Sample Overfitting Experiments</h2>
+        <p>Initial hyperparameters &amp; config: 100 epochs, 1e-3 LR, constant LR, AdamW optimizer.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Run</th>
+              <th>Notes</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Run 0</td>
+              <td>
+                Started with 100 epochs at LR 1e-3. Loss was spiky but decreasing toward
+                convergence (~0.25), with clear room for further training. Generated images were
+                mostly noise.
+              </td>
+              <td>2 mins (CPU)</td>
+            </tr>
+            <tr>
+              <td>Run 1</td>
+              <td>
+                Increased training to 500 epochs at LR 1e-3. Loss remained spiky but decreasing
+                toward convergence (~0.15), with room still to go. Generated images were still
+                mostly noise.
+              </td>
+              <td>5 mins (CPU)</td>
+            </tr>
+            <tr>
+              <td>Run 2</td>
+              <td>
+                Kept 500 epochs and lowered LR to 1e-4. Loss was still spiky but decreasing toward
+                convergence (~0.10), with room still to go. Generated images remained mostly noise.
+              </td>
+              <td>5 mins (CPU)</td>
+            </tr>
+            <tr>
+              <td>Run 3</td>
+              <td>
+                Increased training to 1k epochs at LR 1e-3. Loss became very spiky and less stable
+                (~0.15) and did not show smooth convergence. This run produced the weakest-looking
+                generations.
+              </td>
+              <td>11 mins (CPU)</td>
+            </tr>
+            <tr>
+              <td>Run 4</td>
+              <td>
+                Increased training to 5k epochs at LR 1e-4. Loss remained spiky but decreasing
+                toward convergence (~0.05), with room still to go. Generation quality improved
+                significantly.
+              </td>
+              <td>76 mins (CPU)</td>
+            </tr>
+            <tr>
+              <td>Run 5</td>
+              <td>
+                Kept 5k epochs and changed to cosine-annealed LR from 1e-3 to 1e-5. Loss stayed
+                spiky but decreased toward convergence (~0.02), with some room still to go.
+                Generation quality improved.
+              </td>
+              <td>70 mins (CPU)</td>
+            </tr>
+            <tr>
+              <td>Run 6</td>
+              <td>
+                Increased training to 10k epochs with cosine-annealed LR from 1e-3 to 1e-5. Loss
+                became low and stable near convergence (~0.001) with minimal room left to improve.
+                This run produced the best generations and effectively overfit.
+              </td>
+              <td>20 mins (GPU)</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Results</h2>
+        <p>
+          My MeanFlow implementation successfully overfit to the 3-sample training dataset on the
+          6th run, proving the MeanFlow identity and sampler were implemented correctly. Here are
+          the sampler generations for run 6, and the loss curve:
+        </p>
+        <figure>
+          <img src="experiments/run6/loss.png" alt="Loss curve for run 6" />
+          <figcaption>Run 6 loss curve.</figcaption>
+        </figure>
+        <figure>
+          <img src="experiments/run6/samples.png" alt="Generated samples for run 6" />
+          <figcaption>Run 6 generated samples.</figcaption>
+        </figure>
+        <p>
+          Unfortunately, I was unable to train on the full Imagenette2 dataset because I ran out of time.
+        </p>
+      </section>
+
+      <section>
+        <h2>Future Improvements</h2>
+        <ul>
+          <li>work on full dataset training</li>
+          <li>conditioning with label optional</li>
+          <li>change sampler from uniform to long norm optional</li>
+          <li>alternative to sinusoidal embeddings optional</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>References</h2>
+        <ul>
+          <li>
+            [1] Geng et al., "Mean Flows for One-step Generative Modeling" (2025),
+            <a href="https://arxiv.org/abs/2505.13447" target="_blank" rel="noopener noreferrer"
+              >arXiv:2505.13447</a>.
+          </li>
+          <li>
+            [2] Official MeanFlow implementation,
+            <a href="https://github.com/Gsunshine/meanflow" target="_blank" rel="noopener noreferrer"
+              >GitHub: Gsunshine/meanflow</a>.
+          </li>
+          <li>
+            [3] ImageNette-2 dataset,
+            <a href="https://github.com/fastai/imagenette" target="_blank" rel="noopener noreferrer"
+              >fastai/imagenette</a>.
+          </li>
+          <li>
+            [4] He et al., "Deep Residual Learning for Image Recognition" (2015),
+            <a href="https://arxiv.org/abs/1512.03385" target="_blank" rel="noopener noreferrer"
+              >arXiv:1512.03385</a>.
+          </li>
+          <li>
+            [5] Ronneberger et al., "U-Net: Convolutional Networks for Biomedical Image
+            Segmentation" (2015),
+            <a href="https://arxiv.org/abs/1505.04597" target="_blank" rel="noopener noreferrer"
+              >arXiv:1505.04597</a>.
+          </li>
+          <li>
+            [6] Vaswani et al., "Attention Is All You Need" (2017),
+            <a href="https://arxiv.org/abs/1706.03762" target="_blank" rel="noopener noreferrer"
+              >arXiv:1706.03762</a>.
+          </li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

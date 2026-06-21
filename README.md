@@ -1,6 +1,6 @@
 # MeanFlow
 
-This repository contains the code for a Pytorch implementation of ["Mean Flows for One-step Generative Modeling"](https://arxiv.org/pdf/2505.13447$0) (Geng et. al).
+This repository contains the code for a PyTorch implementation of ["Mean Flows for One-step Generative Modeling"](https://arxiv.org/abs/2505.13447) (Geng et al.).
 
 There are two workflows for training and generating samples:
 - locally (`train.py` + `inference.py`)
@@ -57,7 +57,11 @@ python train.py
 
 `meanflow.ipynb` mirrors the local script logic, but is designed for Colab GPU usage in case you don't have local GPU access.
 
-To use, upload the preprocessed Imagenette2 dataset to your Google drive, upload it to the notebook after running the data cell, and execute the cells in order. 
+To use:
+
+1. Upload the preprocessed Imagenette2 dataset to Google Drive.
+2. Update dataset paths in the setup/config cells.
+3. Execute cells in order.
 
 ## Inference
 
@@ -70,7 +74,7 @@ If you use the local training workflow, use `inference.py` to evaluate one-step 
    ```bash
    python inference.py
    ```
-3. Check visualization output `samplesNEW.png` in `experiments/run{run}`.
+3. Check visualization output `samples.png` in `experiments/run{run}`.
 
 ## Experiment Saving and Folder Structure
 

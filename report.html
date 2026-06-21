@@ -194,10 +194,12 @@
           MeanFlow fixes this by providing single-step generation. Instead of learning the
           instantaneous velocity of many points between two distributions, MeanFlow learns the
           average velocity field of two times, <span class="var">r</span> and
-          <span class="var">t</span>, between two distributions directly.<a class="cite"
+          <span class="var">t</span>, between two distributions directly, which allows the ability to jump from one distribution to another with one step. <a class="cite"
             href="https://arxiv.org/abs/2505.13447"
             target="_blank"
-            rel="noopener noreferrer">[1]</a>
+            rel="noopener noreferrer">[1].
+    
+        </a>
         </p>
         <div class="equation">
           <code>u(z_t, r, t) = v(z_t, t) - (t - r) * d/dt [u(z_t, r, t)]</code>

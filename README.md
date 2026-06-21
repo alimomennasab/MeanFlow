@@ -3,12 +3,14 @@
 This repository contains the code for a PyTorch implementation of ["Mean Flows for One-step Generative Modeling"](https://arxiv.org/abs/2505.13447) (Geng et al.).
 
 There are two workflows for training and generating samples:
+
 - locally (`train.py` + `inference.py`)
 - Google Colab notebook (`meanflow.ipynb`)
 
 Both workflows have two training options:
+
 - 3-sample dataset: quickly overfit on three Imagenette2 training samples to ensure the MeanFlow objective/sampler work.
-- Full dataset (in progress): train with the entire Imagenette2 dataset. 
+- Full dataset (in progress): train with the entire Imagenette2 dataset.
 
 ## Data Preprocessing
 
@@ -65,9 +67,7 @@ To use:
 
 ## Inference
 
-If you use the local training workflow, use `inference.py` to evaluate one-step generation quality against the 3 reference images. If you are using the Colab workflow, this inference step is in the very last cell. 
-
-
+If you use the local training workflow, use `inference.py` to evaluate one-step generation quality against the 3 reference images. If you are using the Colab workflow, this inference step is in the very last cell.
 
 1. Set `run` in `inference.py` to match the trained run folder.
 2. Run:
@@ -85,13 +85,12 @@ All run loss curves/checkpoints are grouped by run id:
 - `experiments/run2`
 - etc
 
-
 Files in each run folder:
 
 - `meanflow_best.pt`: best checkpoint by training loss
 - `meanflow.pt`: last checkpoint from end of run
 - `loss.png`: training/evaluation loss curves
-- `samples.png`: image comparison between generated images & training images. 
+- `samples.png`: image comparison between generated images & training images.
 
 ## Directory Reference
 

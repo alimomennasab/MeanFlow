@@ -76,21 +76,18 @@ If you use the local training workflow, use `inference.py` to evaluate one-step 
    ```
 3. Check visualization output `samples.png` in `experiments/run{run}`.
 
-## Experiment Saving and Folder Structure
+## Experiment Outputs
 
-All run loss curves/checkpoints are grouped by run id:
+All training artifacts are saved under `experiments/run{run}` (for example,
+`experiments/run0`, `experiments/run1`, etc.), where `run` is the run id set in
+the config.
 
-- `experiments/run0`
-- `experiments/run1`
-- `experiments/run2`
-- etc
+Each run folder contains:
 
-Files in each run folder:
-
-- `meanflow_best.pt`: best checkpoint by training loss
-- `meanflow.pt`: last checkpoint from end of run
+- `meanflow_best.pt`: best checkpoint (lowest training loss)
+- `meanflow.pt`: final checkpoint at the end of training
 - `loss.png`: training/evaluation loss curves
-- `samples.png`: image comparison between generated images & training images.
+- `samples.png`: generated image comparison against reference training images
 
 ## Directory Reference
 

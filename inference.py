@@ -54,7 +54,7 @@ with torch.no_grad():
         current_batch_size = min(batch_size, num_generated - start)
 
         # One-step generation from MeanFlow: x_gen = e - u(e, r=0, t=1).
-        e = torch.randn(x.shape)
+        e = torch.randn(current_batch_size, device=device)
         r = torch.zeros(current_batch_size, device=device)
         t = torch.ones(current_batch_size, device=device)
         x_gen = e - model(e, r, t) # r = 0, t = 1

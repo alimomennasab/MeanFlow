@@ -66,7 +66,6 @@ if __name__ == "__main__":
     val_dataset_path = "data/imagenette2/val_npy/"
     train_dataset = MeanFlowDataset(train_dataset_path)
     val_dataset = MeanFlowDataset(val_dataset_path)
-    val_dataset = MeanFlowDataset(val_dataset_path)
     print(f"num train samples: {len(train_dataset)}")
     print(f"num val samples: {len(val_dataset)}")
 
@@ -103,7 +102,7 @@ if __name__ == "__main__":
         for x, y in train_loader: 
             x = x.to(device)
             optimizer.zero_grad()
-            t, r = sample_t_r(batch_size)
+            t, r = sample_t_r(x.shape[0])
             t = t.to(device)
             r = r.to(device)
 
@@ -134,7 +133,7 @@ if __name__ == "__main__":
         epoch_val_loss = 0
         for x, y in val_loader:
             x = x.to(device)
-            t, r = sample_t_r(batch_size)
+            t, r = sample_t_r(x.shape[0])
             t = t.to(device)
             r = r.to(device)
             t_reshape = t.view(-1, 1, 1, 1)

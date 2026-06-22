@@ -302,6 +302,22 @@
           wrote the UNet from scratch, and used Cursor to double check my code.
         </p>
 
+        <h3>Loss Function</h3>
+        <p>
+          I trained the model with an MSE objective between the predicted average velocity and the
+          target average velocity:
+        </p>
+        <div class="equation">
+          <code>L(theta) = E[||u_theta(z_t, r, t) - sg(u_tgt)||^2]</code>
+        </div>
+        <p>
+          In my implementation, this is the MSE loss between <code>u_theta(z_t, r, t)</code> and
+          <code>u_tgt</code>. Note that the <code>sg</code> term means that no gradients flow
+          through the target average velocity during backpropagation. I use
+          <code>.detach()</code> to achieve this in my implementation:
+          <code>train_loss = loss_fn(u, u_tgt.detach())</code>.
+        </p>
+
         <h3>Image Sampler/Inference</h3>
         <p>
           For inference, I followed their one-step sampling method. The idea is to jump directly

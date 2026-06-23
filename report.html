@@ -213,8 +213,21 @@
           calculations. To perform the derivative efficiently, MeanFlow uses a Jacobian-vector
           product (JVP) to compute the directional derivative of <span class="var">u</span> for
           only the input state <span class="var">z_t</span>, which is much less computationally
-          intensive.
+          intensive. MeanFlow is able to evaluate the derivative of <code>u</code> with a JVP instead of a full Jacobian because the derivative of
+          du/dt with respect to z_t, r, and t becomes
+          
         </p>
+        <div class="equation">
+          <code>d/dt u(z_t, r, t) = (dz_t/dt) * partial_(z_t)u + (dr/dt) * partial_r u + (dt/dt) * partial_t u</code>
+        </div>
+        <p>
+          In this setup, <code>dz_t/dt = v(z_t, t)</code>, <code>dr/dt = 0</code> (because
+          <code>r</code> is held constant in the JVP direction), and <code>dt/dt = 1</code>. Substituting these gives:
+        </p>
+        <div class="equation">
+          <code>d/dt u(z_t, r, t) = v(z_t, t) * partial_(z_t)u + partial_t u</code>
+        </div>
+        Torch's <code>torch.func.jvp</code> can efficiently perform the JVP between vector V and Jacobian matrix u. 
       </section>
 
       <section>
